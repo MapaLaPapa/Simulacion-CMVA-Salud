@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db-primary:
+    image: mysql:8.0
+    container_name: rayen_mysql_primary
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE_PRIMARY}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data_primary:/var/lib/mysql
+      - ./primary/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - rayen_db_net
+
+  db-replica:
+    image: mysql:8.0
+    container_name: rayen_mysql_replica
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3307:3306" 
+    volumes:
+      - mysql_data_replica:/var/lib/mysql
+      - ./replica/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    networks:
+      - rayen_db_net
+    depends_on:
+      - db-primary
+
+volumes:
+  mysql_data_primary:
+    driver: local
+  mysql_data_replica:
+    driver: local
+
+networks:
+  rayen_db_net:
+    driver: bridge

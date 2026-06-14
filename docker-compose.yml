@@ -14,7 +14,7 @@ volumes:
 services:
   gateway:
     build:
-      context: ./infrastructure/gateway
+      context: ./infraestructure/gateway
     container_name: rayen_gateway
     restart: unless-stopped
     ports:
@@ -42,13 +42,13 @@ services:
     env_file:
       - .env
     environment:
-      - DB_HOST=${TAILSCALE_SERVERHP_IP}
+      - DB_HOST=${DB_HOST}
     networks:
       - rayen_private_net
   
   ivr-service:
     build:
-      context: ./services/ivr-service
+      context: ./services/asterisk
     container_name: rayen_ivr
     restart: unless-stopped
     ports:
@@ -77,7 +77,7 @@ services:
     container_name: rayen_prometheus
     restart: unless-stopped
     volumes:
-      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infraestructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     networks:
       - rayen_private_net
     depends_on:
@@ -95,3 +95,4 @@ services:
       - rayen_private_net
     depends_on:
       - prometheus
+

@@ -17,8 +17,8 @@ COPY rtp.conf /etc/asterisk/rtp.conf
 COPY sounds/ /usr/share/asterisk/sounds/es/
 
 RUN mkdir -p /var/run/asterisk && \
-    chown -R asterisk:asterisk /etc/asterisk /var/lib/asterisk /var/log/asterisk /var/run/asteri>
-
+    chown -R asterisk:asterisk /etc/asterisk /var/lib/asterisk /var/log/asterisk /var/run/asterisk /var/spool/asterisk /usr/share/asterisk/sounds
+    
 EXPOSE 5060/udp 5060/tcp 10000-10099/udp
 
 USER asterisk

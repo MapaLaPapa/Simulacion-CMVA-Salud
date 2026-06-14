@@ -16,6 +16,10 @@ services:
       - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - rayen_db_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      timeout: 10s
+      retries: 5
 
   db-replica:
     image: mysql:8.0
@@ -31,7 +35,28 @@ services:
     networks:
       - rayen_db_net
     depends_on:
-      - db-primary
+      db-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      timeout: 10s
+      retries: 5
+  
+  db-setup:
+    image: alpine:latest
+    container_name: rayen_mysql_setup
+    networks:
+      - rayen_db_net
+    depends_on:
+      db-primary:
+        condition: service_healthy
+      db-replica:
+        condition: service_healthy
+    volumes:
+      - ../../scripts/deploy/setup-replication.sh:/setup.sh:ro
+      - ../../.env:/.env:ro
+      
+    command: /bin/sh -c "apk add --no-cache bash mariadb-client && bash /setup.sh"
 
 volumes:
   mysql_data_primary:

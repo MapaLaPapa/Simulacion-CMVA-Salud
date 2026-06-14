@@ -1,0 +1,97 @@
+version: '3.8'
+
+networks:
+  rayen_public_net:
+    driver: bridge
+  rayen_private_net:
+    driver: bridge
+    internal: true
+
+volumes:
+  grafana_data:
+    driver: local
+
+services:
+  gateway:
+    build:
+      context: ./infrastructure/gateway
+    container_name: rayen_gateway
+    restart: unless-stopped
+    ports:
+      - "80:80" 
+    networks:
+      - rayen_public_net
+      - rayen_private_net
+    depends_on:
+      frontend:
+        condition: service_healthy
+  
+  frontend:
+    build:
+      context: ./services/frontend
+    container_name: rayen_frontend
+    restart: unless-stopped
+    networks:
+      - rayen_private_net
+  
+  backend:
+    build:
+      context: ./services/backend
+    container_name: rayen_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=${TAILSCALE_SERVERHP_IP}
+    networks:
+      - rayen_private_net
+  
+  ivr-service:
+    build:
+      context: ./services/ivr-service
+    container_name: rayen_ivr
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "10000-10099:10000-10099/udp" # RTP (Audio)
+    networks:
+      - rayen_private_net
+      - rayen_public_net 
+  
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: rayen_cadvisor
+    privileged: true
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - rayen_private_net
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: rayen_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - rayen_private_net
+    depends_on:
+      - cadvisor
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: rayen_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - rayen_private_net
+    depends_on:
+      - prometheus

@@ -9,13 +9,13 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE_PRIMARY}
     ports:
-      - "3306:3306"
+      - "3308:3306"
     volumes:
       - mysql_data_primary:/var/lib/mysql
       - ./primary/my.cnf:/etc/mysql/conf.d/my.cnf:ro
       - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - rayen_db_net
+      - rayen_private_net
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       timeout: 10s
@@ -28,12 +28,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "3307:3306" 
+      - "3309:3306" 
     volumes:
       - mysql_data_replica:/var/lib/mysql
       - ./replica/my.cnf:/etc/mysql/conf.d/my.cnf:ro
     networks:
-      - rayen_db_net
+      - rayen_private_net
     depends_on:
       db-primary:
         condition: service_healthy
@@ -46,7 +46,7 @@ services:
     image: alpine:latest
     container_name: rayen_mysql_setup
     networks:
-      - rayen_db_net
+      - rayen_private_net
     depends_on:
       db-primary:
         condition: service_healthy
@@ -65,5 +65,6 @@ volumes:
     driver: local
 
 networks:
-  rayen_db_net:
-    driver: bridge
+  rayen_private_net:
+    external: true
+    name: rayen_red_compartida

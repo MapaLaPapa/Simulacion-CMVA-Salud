@@ -6,6 +6,7 @@ networks:
   rayen_private_net:
     driver: bridge
     internal: true
+    name: rayen_red_compartida
 
 volumes:
   grafana_data:
@@ -24,7 +25,7 @@ services:
       - rayen_private_net
     depends_on:
       frontend:
-        condition: service_healthy
+        condition: service_started
   
   frontend:
     build:
@@ -41,8 +42,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - DB_HOST=${DB_HOST}
     networks:
       - rayen_private_net
   

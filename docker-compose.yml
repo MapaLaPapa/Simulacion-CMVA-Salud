@@ -9,6 +9,7 @@ networks:
     name: rayen_red_compartida
 
 volumes:
+  ollama_data:
   grafana_data:
     driver: local
 
@@ -95,3 +96,54 @@ services:
     depends_on:
       - prometheus
 
+
+
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rayen_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - rayen_public_net
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: rayen_ollama_init
+    volumes:
+      - ollama_data:/root/.ollama
+    depends_on:
+      - ollama
+    networks:
+      - rayen_private_net
+    # Usamos sh para ejecutar el pull después de una espera
+    entrypoint: ["/bin/sh", "-c"]
+    command: 
+      - |
+        echo "Esperando a que Ollama inicie..."
+        sleep 10
+        echo "Descargando modelo llama3..."
+        ollama pull llama3
+        echo "¡Descarga finalizada!"
+
+  # 2. El microservicio de tu Chatbot (el que configuramos antes)
+  chat-ia:
+    build: 
+      context: ./services/chatIA
+      dockerfile: Dockerfile
+    container_name: rayen_chat_ia
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    networks:
+      - rayen_public_net
+
+
+  

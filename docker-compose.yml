@@ -109,29 +109,31 @@ services:
     restart: unless-stopped
     networks:
       - rayen_public_net
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   ollama-init:
     image: ollama/ollama:latest
     container_name: rayen_ollama_init
-    volumes:
-      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=ollama:11434
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     networks:
-      - rayen_private_net
-    # Usamos sh para ejecutar el pull después de una espera
+      - rayen_public_net
     entrypoint: ["/bin/sh", "-c"]
-    command: 
+    command:
       - |
         echo "Esperando a que Ollama inicie..."
-        sleep 10
-        echo "Descargando modelo llama3..."
         ollama pull llama3
         echo "¡Descarga finalizada!"
 
-  # 2. El microservicio de tu Chatbot (el que configuramos antes)
   chat-ia:
-    build: 
+    build:
       context: ./services/chatIA
       dockerfile: Dockerfile
     container_name: rayen_chat_ia
@@ -140,10 +142,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - rayen_public_net
-
 
   

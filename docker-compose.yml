@@ -9,6 +9,7 @@ networks:
     name: rayen_red_compartida
 
 volumes:
+  ollama_data:
   grafana_data:
     driver: local
 
@@ -99,3 +100,56 @@ services:
     depends_on:
       - prometheus
 
+
+
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rayen_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - rayen_public_net
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: rayen_ollama_init
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - rayen_public_net
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Esperando a que Ollama inicie..."
+        ollama pull llama3
+        echo "¡Descarga finalizada!"
+
+  chat-ia:
+    build:
+      context: ./services/chatIA
+      dockerfile: Dockerfile
+    container_name: rayen_chat_ia
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - rayen_public_net
+
+  

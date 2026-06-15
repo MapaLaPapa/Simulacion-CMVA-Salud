@@ -8,6 +8,7 @@ import ConfirmacionPage from './pages/confirmacion';
 import MisCitasPage from './pages/portalpaciente';
 import Nosotros from './pages/nosotros';
 import FAQ from './pages/faq';
+import Chat from './components/chat';
 
 const RedireccionExterna = () => {
   window.location.href = '/grafana/';
@@ -27,7 +28,7 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/stats" element={<DashboardStats />} />
         <Route path="/confirmar/:idCita" element={<ConfirmacionPage />} />
-        
+        <Route path="/chat" element={<Chat />} />
         <Route path="/grafana/*" element={<RedireccionExterna />} />
        
         <Route path="*" element={<Navigate to="/" replace />} />

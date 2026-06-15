@@ -33,8 +33,6 @@ interface DatosReserva {
 }
 
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 export function BookingForm() {
   const [paso, setPaso] = useState<Paso>('rut')
   const [rut, setRut] = useState('')
@@ -80,7 +78,7 @@ export function BookingForm() {
     
     const cargarEspecialidades = async () => {
       try {
-        const res = await fetch(`${API_URL}/especialidades`);
+        const res = await fetch(`/api/especialidades`);
         if (res.ok) {
           const data = await res.json();
           setEspecialidadesDB(data);
@@ -125,7 +123,7 @@ export function BookingForm() {
 
         setIsLoading(true);
         try {
-        const response = await fetch(`${API_URL}/pacientes/${rutLimpio}`);
+        const response = await fetch(`/api/pacientes/${rutLimpio}`);
 
         if (response.ok) {
             const pacienteData = await response.json();
@@ -156,7 +154,7 @@ export function BookingForm() {
     const seleccionarEspecialidad = async (id: string) => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_URL}/profesionales?especialidad=${id}`);
+            const res = await fetch(`/api/profesionales?especialidad=${id}`);
             if (res.ok) {
             const data = await res.json();
             
@@ -182,7 +180,7 @@ export function BookingForm() {
         setDatos({ ...datos, profesionalId: id, cesfam: cesfamDelMedico, fecha: '', hora: '' });
         try {
         const mesStr = format(mesActual, 'yyyy-MM');
-        const res = await fetch(`${API_URL}/horarios/${id}?mes=${mesStr}`);
+        const res = await fetch(`/api/horarios/${id}?mes=${mesStr}`);
         if (res.ok) {
             const data = await res.json();
             setHorariosDB(data);
@@ -212,7 +210,7 @@ export function BookingForm() {
     const confirmarCita = async () => {
         setIsLoading(true);
         try {
-        const res = await fetch(`${API_URL}/citas`, {
+        const res = await fetch(`/api/citas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -257,7 +255,7 @@ export function BookingForm() {
 
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_URL}/pacientes`, {
+            const res = await fetch(`/api/pacientes`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(pacienteParaBD) 

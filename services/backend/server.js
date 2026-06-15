@@ -7,10 +7,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+console.log("=== DIAGNÓSTICO DE CREDENCIALES ===");
+console.log("Usuario:", process.env.MYSQL_USER);
+console.log("Password:", process.env.MYSQL_PASSWORD);
+console.log("Host:", process.env.DB_HOST);
+console.log("===================================");
+
 const db_profesionales = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
+    password: process.env.MYSQL_ROOT_PASSWORD,
     database: process.env.MYSQL_DATABASE_PRIMARY,
     waitForConnections: true,
     connectionLimit: 10,
@@ -20,12 +26,13 @@ const db_profesionales = mysql.createPool({
 const db_pacientes = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
+    password: process.env.MYSQL_ROOT_PASSWORD,
     database: process.env.MYSQL_DATABASE_REPLICA,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
+
 
 
 

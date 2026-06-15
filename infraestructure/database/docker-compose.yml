@@ -13,7 +13,7 @@ services:
     volumes:
       - mysql_data_primary:/var/lib/mysql
       - ./primary/my.cnf:/etc/mysql/conf.d/my.cnf:ro
-      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init:/docker-entrypoint-initdb.d:ro
     networks:
       - rayen_private_net
     healthcheck:

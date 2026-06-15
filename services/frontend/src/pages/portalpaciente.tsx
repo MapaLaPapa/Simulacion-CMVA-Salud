@@ -37,7 +37,6 @@ const estadoConfig: Record<string, any> = {
   'INASISTIDA': { label: 'No Asiste', color: 'bg-red-100 text-red-800', icon: AlertCircle }
 }
 
-const VITE_API_URL = import.meta.env.VITE_API_URL;
 
 export default function MisCitasPage() {
   // Estados de flujo (1: Pedir RUT, 2: Pedir Código, 3: Dashboard)
@@ -95,7 +94,7 @@ export default function MisCitasPage() {
     
     try {
       // POST al backend para generar y enviar el código
-      const res = await fetch(`${VITE_API_URL}/pacientes/solicitar-codigo`, {
+      const res = await fetch(`/api/pacientes/solicitar-codigo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rut })
@@ -129,7 +128,7 @@ export default function MisCitasPage() {
     setErrorGlobal('');
 
     try {
-      const res = await fetch(`${VITE_API_URL}/pacientes/verificar-codigo`, {
+      const res = await fetch(`/api/pacientes/verificar-codigo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rut, codigo })
@@ -162,7 +161,7 @@ export default function MisCitasPage() {
     try {
       // Nota: Idealmente el backend debería pedir un token de sesión aquí también, 
       // pero para simplificar usaremos el RUT y el mismo código validado antes
-      const res = await fetch(`${VITE_API_URL}/pacientes/${rut}/contacto`, {
+      const res = await fetch(`/api/pacientes/${rut}/contacto`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, codigo_verificacion: codigo }) 

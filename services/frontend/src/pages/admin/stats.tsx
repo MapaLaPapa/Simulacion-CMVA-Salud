@@ -32,7 +32,6 @@ interface EstadisticasCitas {
   };
 }
 
-const VITE_API_URL = import.meta.env.VITE_API_URL;
 
 export default function DashboardStats() {
   const [agendaCompleta, setAgendaCompleta] = useState<BloqueAgenda[]>([]);
@@ -45,7 +44,7 @@ export default function DashboardStats() {
   const cargarEstadisticas = async () => {
     try {
         setLoading(true);
-        const res = await fetch(`${VITE_API_URL}/admin/agenda-completa`);
+        const res = await fetch(`/api/admin/agenda-completa`);
         if (!res.ok) throw new Error('Error al cargar estadísticas');
         
         const data = await res.json();

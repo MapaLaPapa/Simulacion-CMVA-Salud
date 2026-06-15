@@ -9,6 +9,11 @@ import MisCitasPage from './pages/portalpaciente';
 import Nosotros from './pages/nosotros';
 import FAQ from './pages/faq';
 
+const RedireccionExterna = () => {
+  window.location.href = '/grafana/';
+  return null; 
+};
+
 function App() {
   return (
     <Router>
@@ -23,6 +28,7 @@ function App() {
         <Route path="/admin/stats" element={<DashboardStats />} />
         <Route path="/confirmar/:idCita" element={<ConfirmacionPage />} />
         
+        <Route path="/grafana/*" element={<RedireccionExterna />} />
        
         <Route path="*" element={<Navigate to="/" replace />} />
       

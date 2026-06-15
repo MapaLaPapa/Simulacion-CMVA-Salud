@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { Header } from '../components/header';
 import { Footer } from '../components/footer'; // Asumiendo que tienes un Footer
 
-const API_URL = import.meta.env.VITE_API_URL;
 
 const ConfirmacionPage = () => {
     const { idCita } = useParams();
@@ -19,7 +18,7 @@ const ConfirmacionPage = () => {
         const fetchCita = async () => {
             try {
                 // Llamamos a tu Orquestador (server.js) que hace de proxy hacia Rayen
-                const response = await fetch(`${API_URL}/citas/detalle/${idCita}`);
+                const response = await fetch(`/api/citas/detalle/${idCita}`);
                 
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -46,7 +45,7 @@ const ConfirmacionPage = () => {
         setError(null); // Limpiamos errores previos
         try {
             // PUT directo al Orquestador
-            const response = await fetch(`${API_URL}/admin/citas/${idCita}/estado`, {
+            const response = await fetch(`/api/admin/citas/${idCita}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 

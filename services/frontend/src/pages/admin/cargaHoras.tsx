@@ -16,7 +16,6 @@ interface Profesional {
   id_rol: number;
 }
 
-const VITE_API_URL = import.meta.env.VITE_API_URL;
 
 export default function CargaHoras() {
   const location = useLocation();
@@ -39,7 +38,7 @@ export default function CargaHoras() {
 
   useEffect(() => {
     // Cargar lista de profesionales para el select
-    fetch(`${VITE_API_URL}/admin/profesionales`)
+    fetch(`/api/admin/profesionales`)
       .then(res => res.json())
       .then(data => setProfesionales(data));
   }, []);
@@ -54,7 +53,7 @@ export default function CargaHoras() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`${VITE_API_URL}/admin/generar-bloques-rango`, {
+      const response = await fetch(`/api/admin/generar-bloques-rango`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formRango)
@@ -88,7 +87,7 @@ export default function CargaHoras() {
   const procesarCSV = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${VITE_API_URL}/admin/cargar-bloques-csv`, {
+      const response = await fetch(`/api/admin/cargar-bloques-csv`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bloques: csvData })

@@ -39,7 +39,6 @@ const estadoConfig: EstadoConfig = {
   inasistida: { label: 'No Asiste', color: 'bg-red-100 text-red-800', dotColor: 'bg-red-600' }
 };
 
-const VITE_API_URL = import.meta.env.VITE_API_URL;
 
 export default function DashboardAdmin() {
   
@@ -57,7 +56,7 @@ export default function DashboardAdmin() {
   const cargarAgenda = async () => {
     try {
         setLoading(true);
-        const res = await fetch(`${VITE_API_URL}/admin/agenda-completa`);
+        const res = await fetch(`/api/admin/agenda-completa`);
         if (!res.ok) throw new Error('Error al cargar la agenda');
         
         const data = await res.json();
@@ -94,7 +93,7 @@ export default function DashboardAdmin() {
             return;
         }
 
-        const respuesta = await fetch(`${VITE_API_URL}/admin/citas/${idCita}/estado`, {
+        const respuesta = await fetch(`/api/admin/citas/${idCita}/estado`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

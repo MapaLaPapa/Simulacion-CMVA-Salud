@@ -86,11 +86,15 @@ services:
     image: grafana/grafana:10.4.1
     container_name: rayen_grafana
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    environment:
+      - GF_SERVER_ROOT_URL=http://localhost/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    #ports:
+      #- "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
+      - rayen_public_net
       - rayen_private_net
     depends_on:
       - prometheus

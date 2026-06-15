@@ -1,3 +1,4 @@
+const nodemailer = require('nodemailer');
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -7,13 +8,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-console.log("=== DIAGNÓSTICO DE CREDENCIALES ===");
-console.log("Usuario:", process.env.MYSQL_USER);
-console.log("Password:", process.env.MYSQL_PASSWORD);
-console.log("Host:", process.env.DB_HOST);
-console.log("===================================");
+const cron = require('node-cron');
+const { enviarNotificaciones } = require('./notificaciones');
 
-const db_profesionales = mysql.createPool({
+const db_profesionales_cluster = mysql.createPoolCluster({
+    canRetry: true,          
+    removeNodeErrorCount: 1, 
+    restoreNodeTimeout: 15000
+});
+
+db_profesionales_cluster.add('PRIMARIA', {
     host: process.env.DB_HOST,
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_ROOT_PASSWORD,
@@ -23,7 +27,28 @@ const db_profesionales = mysql.createPool({
     queueLimit: 0
 });
 
-const db_pacientes = mysql.createPool({
+db_profesionales_cluster.add('REPLICA', {
+    host: process.env.DB_HOST_REPLICA,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_ROOT_PASSWORD,
+    database: process.env.MYSQL_DATABASE_PRIMARY,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
+const db_profesionales = db_profesionales_cluster.of('*', 'ORDER');
+
+
+
+
+const db_pacientes_cluster = mysql.createPoolCluster({
+    canRetry: true,          
+    removeNodeErrorCount: 1, 
+    restoreNodeTimeout: 15000
+});
+
+db_pacientes_cluster.add('PRIMARIA', {
     host: process.env.DB_HOST,
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_ROOT_PASSWORD,
@@ -33,8 +58,33 @@ const db_pacientes = mysql.createPool({
     queueLimit: 0
 });
 
+db_pacientes_cluster.add('REPLICA', {
+    host: process.env.DB_HOST_REPLICA,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_ROOT_PASSWORD,
+    database: process.env.MYSQL_DATABASE_REPLICA,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
+const db_pacientes = db_pacientes_cluster.of('*', 'ORDER');
 
 
+
+app.post('/api/admin/login', (req, res) => {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Debe ingresar correo y contraseña' });
+    }
+    
+    if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+        return res.status(200).json({ mensaje: 'Login exitoso' });
+    } else {
+        return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+});
 
 
 app.get('/api/especialidades', async (req, res) => {
@@ -133,53 +183,6 @@ app.get('/api/horarios/:rol_id', async (req, res) => {
 });
 
 
-app.post('/api/citas', async (req, res) => {
-    const connection = await db_profesionales.getConnection();
-    const connectionPacientes = await db_pacientes.getConnection();
-    
-    try {
-        const { rutPaciente, id_bloque } = req.body;
-
-        if (!rutPaciente || !id_bloque) {
-            return res.status(400).json({ error: 'Faltan datos obligatorios' });
-        }
-
-        await connection.beginTransaction();
-        
-        const [bloqueCheck] = await connection.query(
-            `SELECT estado FROM Agenda_Bloques WHERE id_bloque = ? FOR UPDATE`, 
-            [id_bloque]
-        );
-
-        if (bloqueCheck.length === 0 || bloqueCheck[0].estado !== 'DISPONIBLE') {
-            await connection.rollback();
-            return res.status(409).json({ error: 'Lo sentimos, esta hora acaba de ser reservada por otro paciente.' });
-        }
-        
-        await connection.query(
-            `UPDATE Agenda_Bloques SET estado = 'RESERVADO' WHERE id_bloque = ?`,
-            [id_bloque]
-        );
-
-        
-        await connectionPacientes.query(
-            `INSERT INTO Citas_Agendadas (rut_paciente, id_bloque_externo, origen_reserva, fecha_registro) 
-             VALUES (?, ?, 'WEB', NOW())`,
-            [rutPaciente, id_bloque]
-        );
-        
-        await connection.commit();
-        res.status(201).json({ mensaje: 'Cita confirmada exitosamente' });
-
-    } catch (error) {
-        await connection.rollback();
-        console.error('Error al guardar la cita:', error);
-        res.status(500).json({ error: 'Error interno del servidor al procesar la cita' });
-    } finally {
-        connection.release();
-        connectionPacientes.release();
-    }
-});
 
 app.post('/api/pacientes', async (req, res) => {
     try {
@@ -237,6 +240,54 @@ app.post('/api/pacientes', async (req, res) => {
         }
 
         res.status(500).json({ error: 'Error interno del servidor al crear el paciente.' });
+    }
+});
+
+app.post('/api/citas', async (req, res) => {
+    const connection = await db_profesionales.getConnection();
+    const connectionPacientes = await db_pacientes.getConnection();
+    
+    try {
+        const { rutPaciente, id_bloque } = req.body;
+
+        if (!rutPaciente || !id_bloque) {
+            return res.status(400).json({ error: 'Faltan datos obligatorios' });
+        }
+
+        await connection.beginTransaction();
+        
+        const [bloqueCheck] = await connection.query(
+            `SELECT estado FROM Agenda_Bloques WHERE id_bloque = ? FOR UPDATE`, 
+            [id_bloque]
+        );
+
+        if (bloqueCheck.length === 0 || bloqueCheck[0].estado !== 'DISPONIBLE') {
+            await connection.rollback();
+            return res.status(409).json({ error: 'Lo sentimos, esta hora acaba de ser reservada por otro paciente.' });
+        }
+        
+        await connection.query(
+            `UPDATE Agenda_Bloques SET estado = 'RESERVADO' WHERE id_bloque = ?`,
+            [id_bloque]
+        );
+
+        
+        await connectionPacientes.query(
+            `INSERT INTO Citas_Agendadas (rut_paciente, id_bloque_externo, origen_reserva, fecha_registro) 
+             VALUES (?, ?, 'WEB', NOW())`,
+            [rutPaciente, id_bloque]
+        );
+        
+        await connection.commit();
+        res.status(201).json({ mensaje: 'Cita confirmada exitosamente' });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error al guardar la cita:', error);
+        res.status(500).json({ error: 'Error interno del servidor al procesar la cita' });
+    } finally {
+        connection.release();
+        connectionPacientes.release();
     }
 });
 
@@ -389,6 +440,31 @@ app.put('/api/admin/citas/:id_cita/estado', async (req, res) => {
 });
 
 
+app.get('/api/admin/citas/:id_cita', async (req, res) => {
+    // 1. Obtenemos el ID de la cita desde la URL
+    const { id_cita } = req.params;
+
+    try {
+        // 2. Preparamos la consulta SELECT
+        const queryPacientes = 'SELECT estado_cita FROM Citas_Agendadas WHERE id_cita = ?';
+        
+        // 3. Ejecutamos la consulta (asumiendo que usas mysql2 con promesas)
+        const [rows] = await db_pacientes.query(queryPacientes, [id_cita]);
+
+        // 4. Verificamos si la cita existe
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Cita no encontrada' });
+        }
+
+        // 5. Devolvemos el estado al frontend
+        res.status(200).json({ estado_cita: rows[0].estado_cita });
+
+    } catch (error) {
+        // 6. Manejo de errores
+        console.error('Error al obtener el estado de la cita:', error);
+        res.status(500).json({ error: 'Error interno al obtener el estado de la cita' });
+    }
+});
 
 
 app.get('/api/admin/citas/:id_cita/estado', async (req, res) => {
@@ -491,6 +567,142 @@ app.get('/api/citas/:idCita', async (req, res) => {
         res.status(500).json({ error: "Error interno del servidor al orquestar los datos" });
     }
 });
+
+
+//NOTIFICACIONES
+
+// Ejecutar cada hora en el minuto 0 (Ej: 10:00, 11:00, 12:00)
+cron.schedule('0 * * * *', () => {
+    // Le pasamos las dos conexiones para que el orquestador trabaje
+    enviarNotificaciones(db_profesionales, db_pacientes);
+});
+
+// Prueba de arranque manual al iniciar el servidor
+enviarNotificaciones(db_profesionales, db_pacientes);
+
+const codigosTemporales = {};
+//ARREGLAR
+app.post('/api/pacientes/solicitar-codigo', async (req, res) => {
+    const { rut } = req.body;
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS 
+        }
+    });
+
+    try {
+        // --- CORRECCIÓN: Consulta SQL directa en lugar de fetch ---
+        const [pacientes] = await db_pacientes.query('SELECT email FROM Pacientes WHERE rut = ?', [rut]);
+        
+        if (pacientes.length === 0) {
+            return res.status(404).json({ error: 'RUT no registrado en el sistema' });
+        }
+
+        const emailPaciente = pacientes[0].email;
+
+        // Validación del correo
+        if (!emailPaciente || !emailPaciente.includes('@')) {
+            return res.status(400).json({ 
+                error: 'No tiene un correo válido registrado. Por favor, acérquese al CESFAM para actualizar sus datos.' 
+            });
+        }
+
+        // Generamos código y guardamos sesión
+        const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+        codigosTemporales[rut] = {
+            codigo,
+            expira: Date.now() + 5 * 60 * 1000
+        };
+
+        // Censuramos el correo para el frontend
+        const [user, domain] = emailPaciente.split('@');
+        const correoOculto = user.length > 2 
+            ? `${user[0]}****${user[user.length-1]}@${domain}`
+            : `*@${domain}`;
+
+        try {
+            const mailOptions = {
+                from: '"CESFAM Villa Alemana" <tu_correo_de_prueba@gmail.com>',
+                to: emailPaciente, // Usamos la variable directa de la BD
+                subject: '🔑 Tu Código de Acceso - Portal Paciente CESFAM',
+                html: `
+                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                        <h2 style="color: #0056b3;">Portal Paciente CESFAM</h2>
+                        <p>Hola,</p>
+                        <p>Se ha solicitado un código de acceso para el RUT <strong>${rut}</strong>.</p>
+                        <div style="background-color: #f4f4f4; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                            <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${codigo}</span>
+                        </div>
+                        <p style="font-size: 12px; color: #666;">Si no solicitaste este código, por favor ignora este mensaje.</p>
+                    </div>
+                `
+            };
+
+            await transporter.sendMail(mailOptions);
+            console.log(`[EXITO] Correo enviado correctamente a ${emailPaciente}`);
+        } catch (errorCorreo) {
+            console.error('[ERROR] Falló el envío del correo:', errorCorreo);
+        }
+            
+        res.json({ correoOculto });
+        
+    } catch (error) {
+        console.error('Error detallado al generar código:', error);
+        res.status(500).json({ error: 'Error interno al generar el código de acceso' });
+    }
+});
+
+app.post('/api/pacientes/verificar-codigo', async (req, res) => {
+    const { rut, codigo } = req.body;
+    const registro = codigosTemporales[rut];
+
+    // 1. Verificamos la seguridad
+    if (!registro || registro.codigo !== codigo || Date.now() > registro.expira) {
+        return res.status(401).json({ error: 'Código incorrecto o expirado' });
+    }
+
+    // 2. Si es exitoso, borramos el código para que no se re-use
+    delete codigosTemporales[rut];
+
+    // 3. Le decimos al frontend que todo está OK. 
+    // El frontend ahora debe hacer un fetch normal a /api/perfil-paciente/:rut
+    res.status(200).json({ mensaje: 'Código verificado con éxito', autorizado: true });
+});
+
+app.put('/api/pacientes/:rut/contacto', async (req, res) => {
+    const { rut } = req.params;
+    const { telefono, email, codigo_verificacion } = req.body;
+    
+    // 1. Verificamos que el código siga siendo válido para autorizar el cambio
+    const registro = codigosTemporales[rut];
+    if (!registro || registro.codigo !== codigo_verificacion) {
+        return res.status(401).json({ error: 'Sesión no autorizada o código expirado' });
+    }
+
+    try {
+        // 2. Ejecutamos el UPDATE directo en la base de datos
+        const [resultado] = await db_pacientes.query(
+            'UPDATE Pacientes SET telefono = ?, email = ? WHERE rut = ?',
+            [telefono, email, rut]
+        );
+
+        if (resultado.affectedRows === 0) {
+            return res.status(404).json({ error: 'Paciente no encontrado en la base de datos' });
+        }
+
+        // 3. Limpiamos la sesión por seguridad
+        delete codigosTemporales[rut];
+
+        res.status(200).json({ mensaje: 'Datos de contacto actualizados correctamente' });
+        
+    } catch (error) {
+        console.error('Error al actualizar contacto:', error);
+        res.status(500).json({ error: 'Error interno al actualizar los datos en MySQL' });
+    }
+});
+
 
 
 

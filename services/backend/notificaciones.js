@@ -3,17 +3,33 @@ const twilio = require('twilio');
 require('dotenv').config();
 
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-const RAYEN_API = process.env.RAYEN_API_URL;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
+// ==========================================
+// FUNCIONES AUXILIARES DE BASE DE DATOS
+// ==========================================
+const checkHistorial = async (id_cita, canal, db_pacientes) => {
+    const [rows] = await db_pacientes.query(
+        'SELECT id_notificacion FROM Historial_Notificaciones WHERE id_cita = ? AND canal = ?', 
+        [id_cita, canal]
+    );
+    return rows.length > 0;
+};
 
+const guardarHistorial = async (id_cita, canal, estado, id_mensaje, error_detalles, db_pacientes) => {
+    await db_pacientes.query(`
+        INSERT INTO Historial_Notificaciones (id_cita, canal, estado, fecha_envio, id_mensaje_proveedor, detalles_error)
+        VALUES (?, ?, ?, NOW(), ?, ?)
+    `, [id_cita, canal, estado, id_mensaje || null, error_detalles || null]);
+};
+
+// ==========================================
 // 1. FUNCIÓN PARA SMS
-
-const enviarSms = async (cita) => {
+// ==========================================
+const enviarSms = async (cita, db_pacientes) => {
     try {
-        const resCheck = await fetch(`${RAYEN_API}/api/notificaciones/historial/${cita.id_cita}/SMS`);
-        const historialCheck = await resCheck.json();
-        if (historialCheck.existe) return;
+        const yaEnviado = await checkHistorial(cita.id_cita, 'SMS', db_pacientes);
+        if (yaEnviado) return;
 
         const fechaObj = new Date(cita.fecha_hora_inicio);
         const fechaLimpia = fechaObj.toLocaleDateString('es-CL'); 
@@ -28,30 +44,21 @@ const enviarSms = async (cita) => {
             to: cita.telefono 
         });
 
-        await fetch(`${RAYEN_API}/api/notificaciones/historial`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cita: cita.id_cita, canal: 'SMS', estado: 'ENVIADO', id_mensaje: response.sid })
-        });
+        await guardarHistorial(cita.id_cita, 'SMS', 'ENVIADO', response.sid, null, db_pacientes);
 
     } catch (error) {
         console.error(`Falló SMS para ${cita.nombre_paciente}:`, error.message);
-        await fetch(`${RAYEN_API}/api/notificaciones/historial`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cita: cita.id_cita, canal: 'SMS', estado: 'FALLIDO', error_detalles: error.message })
-        });
+        await guardarHistorial(cita.id_cita, 'SMS', 'FALLIDO', null, error.message, db_pacientes);
     }
 };
 
-
+// ==========================================
 // 2. FUNCIÓN PARA WHATSAPP
-
-const enviarWsp = async (cita) => {
+// ==========================================
+const enviarWsp = async (cita, db_pacientes) => {
     try {
-        const resCheck = await fetch(`${RAYEN_API}/api/notificaciones/historial/${cita.id_cita}/WSP`);
-        const historialCheck = await resCheck.json();
-        if (historialCheck.existe) return; 
+        const yaEnviado = await checkHistorial(cita.id_cita, 'WSP', db_pacientes);
+        if (yaEnviado) return; 
 
         const fechaObj = new Date(cita.fecha_hora_inicio);
         const fechaLimpia = fechaObj.toLocaleDateString('es-CL'); 
@@ -65,32 +72,23 @@ const enviarWsp = async (cita) => {
             to: `whatsapp:${cita.telefono}`
         });
 
-        await fetch(`${RAYEN_API}/api/notificaciones/historial`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cita: cita.id_cita, canal: 'WSP', estado: 'ENVIADO', id_mensaje: responseWsp.sid })
-        });
+        await guardarHistorial(cita.id_cita, 'WSP', 'ENVIADO', responseWsp.sid, null, db_pacientes);
 
     } catch (error) {
         console.error(`Falló WSP para ${cita.nombre_paciente}:`, error.message);
-        await fetch(`${RAYEN_API}/api/notificaciones/historial`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cita: cita.id_cita, canal: 'WSP', estado: 'FALLIDO', error_detalles: error.message })
-        });
+        await guardarHistorial(cita.id_cita, 'WSP', 'FALLIDO', null, error.message, db_pacientes);
     }
 };
 
-
-// 3. Nodemailer
-
-const enviarCorreo = async (cita) => {
+// ==========================================
+// 3. NODEMAILER (CORREO)
+// ==========================================
+const enviarCorreo = async (cita, db_pacientes) => {
     if (!cita.email) return; 
 
     try {
-        const resCheck = await fetch(`${RAYEN_API}/api/notificaciones/historial/${cita.id_cita}/CORREO`);
-        const historialCheck = await resCheck.json();
-        if (historialCheck.existe) return;
+        const yaEnviado = await checkHistorial(cita.id_cita, 'CORREO', db_pacientes);
+        if (yaEnviado) return;
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -133,36 +131,57 @@ const enviarCorreo = async (cita) => {
             html: htmlCuerpo
         });
 
-        await fetch(`${RAYEN_API}/api/notificaciones/historial`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cita: cita.id_cita, canal: 'CORREO', estado: 'ENVIADO', id_mensaje: info.messageId })
-        });
+        await guardarHistorial(cita.id_cita, 'CORREO', 'ENVIADO', info.messageId, null, db_pacientes);
 
     } catch (error) {
         console.error(`Falló Correo para ${cita.nombre_paciente}:`, error.message);
-        await fetch(`${RAYEN_API}/api/notificaciones/historial`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_cita: cita.id_cita, canal: 'CORREO', estado: 'FALLIDO', error_detalles: error.message })
-        });
+        await guardarHistorial(cita.id_cita, 'CORREO', 'FALLIDO', null, error.message, db_pacientes);
     }
 };
 
-
-
-
-const enviarNotificaciones = async () => {
+// ==========================================
+// ORQUESTADOR PRINCIPAL
+// ==========================================
+const enviarNotificaciones = async (db_profesionales, db_pacientes) => {
     try {
-        const res = await fetch(`${RAYEN_API}/api/notificaciones/pendientes`);
-        const citas = await res.json();
-        
-        if (citas.length === 0) return;
+        // 1. Buscamos en db_profesionales los bloques a 48 horas directamente con SQL
+        const [bloques] = await db_profesionales.query(`
+            SELECT id_bloque, fecha_hora_inicio 
+            FROM Agenda_Bloques 
+            WHERE fecha_hora_inicio BETWEEN NOW() + INTERVAL 47 HOUR AND NOW() + INTERVAL 48 HOUR
+              AND estado = 'RESERVADO'
+        `);
 
-        for (const cita of citas) {
-            await enviarSms(cita);
-            await enviarWsp(cita);
-            await enviarCorreo(cita);
+        if (bloques.length === 0) return;
+        const idsBloques = bloques.map(b => b.id_bloque);
+
+        // 2. Buscamos a los pacientes en db_pacientes
+        const [citas] = await db_pacientes.query(`
+            SELECT c.id_cita, c.id_bloque_externo, p.nombre_legal, p.telefono, p.email
+            FROM Citas_Agendadas c
+            JOIN Pacientes p ON c.rut_paciente = p.rut
+            WHERE c.id_bloque_externo IN (?)
+        `, [idsBloques]);
+
+        // 3. Unimos los datos
+        const notificaciones = citas.map(cita => {
+            const bloque = bloques.find(b => b.id_bloque === cita.id_bloque_externo);
+            return {
+                id_cita: cita.id_cita,
+                nombre_paciente: cita.nombre_legal,
+                telefono: cita.telefono,
+                fecha_hora_inicio: bloque.fecha_hora_inicio,
+                email: cita.email
+            };
+        });
+
+        if (notificaciones.length === 0) return;
+
+        // 4. Procesamos los envíos pasándole la conexión a la base de datos a cada función
+        for (const cita of notificaciones) {
+            await enviarSms(cita, db_pacientes);
+            await enviarWsp(cita, db_pacientes);
+            await enviarCorreo(cita, db_pacientes);
         }
 
     } catch (error) {

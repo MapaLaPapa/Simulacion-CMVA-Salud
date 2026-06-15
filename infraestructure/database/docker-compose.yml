@@ -7,7 +7,6 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE_PRIMARY}
     ports:
       - "3308:3306"
     volumes:
@@ -47,6 +46,7 @@ services:
     container_name: rayen_mysql_setup
     networks:
       - rayen_private_net
+      - rayen_public_net
     depends_on:
       db-primary:
         condition: service_healthy
@@ -65,6 +65,8 @@ volumes:
     driver: local
 
 networks:
+  rayen_public_net:
+    driver: bridge
   rayen_private_net:
     external: true
     name: rayen_red_compartida

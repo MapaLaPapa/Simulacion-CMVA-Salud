@@ -42,7 +42,13 @@ services:
       retries: 5
   
   db-setup:
-    image: alpine:latest
+    image: mysql:8.0-debian
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../scripts/deploy/setup-replication.sh:/setup.sh:ro
+    # 3. Ejecutamos el archivo usando la ruta interna del contenedor
+    command: /bin/bash /setup.sh
     container_name: rayen_mysql_setup
     networks:
       - rayen_private_net
@@ -52,11 +58,6 @@ services:
         condition: service_healthy
       db-replica:
         condition: service_healthy
-    volumes:
-      - ../../scripts/deploy/setup-replication.sh:/setup.sh:ro
-      - ../../.env:/.env:ro
-      
-    command: /bin/sh -c "apk add --no-cache bash mariadb-client && bash /setup.sh"
 
 volumes:
   mysql_data_primary:

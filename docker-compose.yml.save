@@ -51,36 +51,15 @@ services:
       context: ./services/asterisk
     container_name: rayen_ivr
     restart: unless-stopped
-    environment:
-      - PUBLIC_IP=${PUBLIC_IP}
     ports:
-      - "0.0.0.0:5060:5060/udp"
-      - "0.0.0.0:5060:5060/tcp"
-      - "0.0.0.0:10000-10099:10000-10099/udp" # 💡 Obliga a mapear en IPv4
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "10000-10099:10000-10099/udp" # RTP (Audio)
     networks:
       - rayen_private_net
       - rayen_public_net 
   
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: rayen_cadvisor
-    privileged: true
-    pid: host                           # 💡 LA LLAVE MAESTRA: Otorga visión total de la RAM y Procesos
-    restart: unless-stopped
-    command:
-      - '-docker_only=true'
-      - '-disable_metrics=disk,diskIO'  # Evita que se estrelle buscando discos virtuales
-    devices:
-      - /dev/kmsg:/dev/kmsg
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # El traductor de nombres (rayen_backend, etc.)
-      - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    networks:
-      - rayen_private_net
+
 
 
 

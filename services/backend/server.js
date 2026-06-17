@@ -71,6 +71,11 @@ db_pacientes_cluster.add('REPLICA', {
 const db_pacientes = db_pacientes_cluster.of('*', 'ORDER');
 
 
+app.get('/api/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
+
 
 app.post('/api/admin/login', (req, res) => {
     const { email, password } = req.body;
@@ -909,6 +914,96 @@ app.post('/api/notificaciones/historial', async (req, res) => {
 
 
 
+app.get('/api/ivr/agendar', async (req, res) => {
+    const connection = await db_profesionales.getConnection();
+    const connectionPacientes = await db_pacientes.getConnection();
+    
+    try {
+        // CAMBIO 1: req.query en lugar de req.body, y capturamos 'tipo' (así lo envía Asterisk)
+        const { rut, tipo } = req.query;
+
+        if (!rut || !tipo) {
+            return res.status(400).send('FALLO'); // Asterisk necesita respuestas cortas
+        }
+
+        let filtroEspecialidad = '';
+        if (tipo === '1') {
+            filtroEspecialidad = 'MED-GRAL';
+        } else if (tipo === '2') {
+            filtroEspecialidad = 'CONTROL';
+        } else {
+            return res.status(400).send('FALLO');
+        }
+
+        await connection.beginTransaction();
+        await connectionPacientes.beginTransaction();
+
+        const [pacienteCheck] = await connectionPacientes.query(
+            `SELECT rut FROM Pacientes WHERE rut = ?`, 
+            [rut]
+        );
+        
+        if (pacienteCheck.length === 0) {
+            await connection.rollback();
+            await connectionPacientes.rollback();
+            console.log(`[IVR] Rechazado: RUT ${rut} no registrado.`);
+            return res.status(404).send('FALLO');
+        }
+
+        const queryBusqueda = `
+            SELECT a.id_bloque 
+            FROM Agenda_Bloques a
+            JOIN Roles r ON a.id_rol = r.id_rol
+            JOIN Especialidades e ON r.codigo_esp = e.codigo_esp
+            WHERE a.estado = 'DISPONIBLE' 
+              AND (e.codigo_esp = ? OR e.especialidad = ?)
+            ORDER BY a.fecha_hora_inicio ASC 
+            LIMIT 1 FOR UPDATE
+        `;
+
+        const [bloqueDisponible] = await connection.query(queryBusqueda, [filtroEspecialidad, filtroEspecialidad]);
+
+        if (bloqueDisponible.length === 0) {
+            await connection.rollback();
+            await connectionPacientes.rollback();
+            console.log(`[IVR] Sin horas disponibles para: ${filtroEspecialidad}.`);
+            return res.status(404).send('FALLO');
+        }
+
+        const id_bloque = bloqueDisponible[0].id_bloque;
+
+        await connection.query(
+            `UPDATE Agenda_Bloques SET estado = 'RESERVADO' WHERE id_bloque = ?`,
+            [id_bloque]
+        );
+
+        await connectionPacientes.query(
+            `INSERT INTO Citas_Agendadas (rut_paciente, id_bloque_externo, origen_reserva, fecha_registro, estado_cita) 
+             VALUES (?, ?, 'IVR', NOW(), 'RESERVADA')`,
+            [rut, id_bloque]
+        );
+        
+        await connection.commit();
+        await connectionPacientes.commit();
+        
+        console.log(`[IVR] ÉXITO: Cita confirmada para RUT ${rut}`);
+        
+        // CAMBIO 2: Responder exactamente la palabra que Asterisk evalúa en el GotoIf
+        res.status(200).send('EXITO');
+
+    } catch (error) {
+        await connection.rollback();
+        await connectionPacientes.rollback();
+        console.error('[IVR] Error:', error);
+        res.status(500).send('FALLO');
+    } finally {
+        connection.release();
+        connectionPacientes.release();
+    }
+});
+
+
+
 app.post('/api/ivr/agendar', async (req, res) => {
     const connection = await db_profesionales.getConnection();
     const connectionPacientes = await db_pacientes.getConnection();
@@ -1005,29 +1100,26 @@ app.post('/api/ivr/agendar', async (req, res) => {
 
 
 
+app.get('/api/ivr/anular', async (req, res) => {
+    // CAMBIO 1: Leer desde req.query
+    const { rut } = req.query;
 
-
-
-
-app.post('/api/ivr/anular', async (req, res) => {
-    const { rut } = req.body;
+    if (!rut) {
+        return res.status(400).send('FALLO');
+    }
 
     try {
-        // PASO 1: Buscar TODAS las citas activas de ese paciente en su base de datos
-        // Aquí no necesitamos permiso de la otra DB
         const [citas] = await db_pacientes.query(
             "SELECT id_cita, id_bloque_externo FROM Citas_Agendadas WHERE rut_paciente = ? AND estado_cita = 'RESERVADA'", 
             [rut]
         );
 
         if (citas.length === 0) {
-            return res.status(404).send('No se encontraron citas');
+            return res.status(404).send('FALLO');
         }
 
-        // Sacamos una lista de todos los IDs de bloques que tiene el paciente
         const idsBloques = citas.map(c => c.id_bloque_externo);
 
-        // PASO 2: Consultar en la DB de Profesionales cuál de esos bloques es el más cercano
         const [bloqueCercano] = await db_profesionales.query(`
             SELECT id_bloque 
             FROM Agenda_Bloques 
@@ -1038,30 +1130,31 @@ app.post('/api/ivr/anular', async (req, res) => {
         `, [idsBloques]);
 
         if (bloqueCercano.length === 0) {
-            return res.status(404).send('No hay citas futuras para anular');
+            return res.status(404).send('FALLO');
         }
 
         const id_bloque_a_liberar = bloqueCercano[0].id_bloque;
 
-        // PASO 3: Liberar el bloque (DB Profesionales)
         await db_profesionales.query(
             "UPDATE Agenda_Bloques SET estado = 'DISPONIBLE' WHERE id_bloque = ?",
             [id_bloque_a_liberar]
         );
 
-        // PASO 4: Anular la cita (DB Pacientes)
         await db_pacientes.query(
             "UPDATE Citas_Agendadas SET estado_cita = 'CANCELADA' WHERE id_bloque_externo = ?",
             [id_bloque_a_liberar]
         );
 
-        res.status(200).send('OK');
+        // CAMBIO 2: Respuesta exacta
+        res.status(200).send('EXITO');
 
     } catch (error) {
-        console.error('[IVR] Error al anular la cita telefónica:', error);
-        res.status(500).send('Error interno');
+        console.error('[IVR] Error al anular:', error);
+        res.status(500).send('FALLO');
     }
 });
+
+
 
 
 

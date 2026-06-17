@@ -62,7 +62,7 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
 
         try {
             // 2. Petición real a tu microservicio Dockerizado (corriendo en el puerto 5001 de tu máquina)
-            const response = await fetch('http://localhost:5001/api/chat', {
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -133,7 +133,7 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs">R</div>
                   <div>
-                    <div className="text-sm font-semibold text-primary">Asistente Rayen</div>
+                    <div className="text-sm font-semibold text-primary">Matt Bortdeen</div>
                     <div className="text-xs text-on-surface-variant">En línea (Local)</div>
                   </div>
                 </div>

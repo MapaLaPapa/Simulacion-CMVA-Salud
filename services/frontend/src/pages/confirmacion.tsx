@@ -18,7 +18,7 @@ const ConfirmacionPage = () => {
         const fetchCita = async () => {
             try {
                 // Llamamos a tu Orquestador (server.js) que hace de proxy hacia Rayen
-                const response = await fetch(`/api/citas/detalle/${idCita}`);
+                const response = await fetch(`/api/citas/${idCita}`);
                 
                 if (!response.ok) {
                     if (response.status === 404) {

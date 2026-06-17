@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // Configuramos la conexión hacia el Ollama físico desde dentro de Docker
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://host.docker.internal:11434/v1';
+const OLLAMA_URL = process.env.OLLAMA_URL;
 
 const openai = new OpenAI({
   baseURL: OLLAMA_URL,

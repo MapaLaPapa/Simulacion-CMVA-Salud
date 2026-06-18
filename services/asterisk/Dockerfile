@@ -26,7 +26,3 @@ USER asterisk
 CMD ["/usr/sbin/asterisk", "-f", "-vvvddd"]
 
 
-
-
-
-

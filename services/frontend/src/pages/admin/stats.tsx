@@ -60,18 +60,15 @@ export default function DashboardStats() {
   useEffect(() => {
     cargarEstadisticas();
   }, []);
-
-  // --- CEREBRO: Cálculo de estadísticas al vuelo según el filtro ---
+  
   const estadisticas = useMemo(() => {
     if (!agendaCompleta || agendaCompleta.length === 0) return null;
 
     const hoy = new Date();
     const mesActual = hoy.getMonth();
     const anioActual = hoy.getFullYear();
-    // Ajuste de zona horaria simple para Chile obteniendo YYYY-MM-DD local
     const diaActual = new Date(hoy.getTime() - (hoy.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-
-    // 1. Filtrar
+    
     const agendaFiltrada = agendaCompleta.filter(item => {
         if (!item.fecha_hora_inicio) return false;
         if (filtroTiempo === 'historico') return true;
@@ -85,8 +82,7 @@ export default function DashboardStats() {
         }
         return true;
     });
-
-    // 2. Acumular
+    
     const stats: EstadisticasCitas = {
         origen: { WEB: 0, IVR: 0 },
         especialidades: {},
@@ -112,13 +108,11 @@ export default function DashboardStats() {
 
     return stats;
   }, [agendaCompleta, filtroTiempo]);
-
-  // Early returns después de los hooks
+  
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (error) return <div className="min-h-screen flex items-center justify-center text-error"><AlertCircle className="h-10 w-10 mr-2" />{error}</div>;
   if (!estadisticas) return <div className="min-h-screen flex items-center justify-center text-on-surface-variant">No hay datos disponibles para este periodo</div>;
-
-  // --- CÁLCULOS MATEMÁTICOS PARA LOS GRÁFICOS ---
+  
   const totalAsistencia = estadisticas.asistencia.asistida + estadisticas.asistencia.inasistida;
   const tasaAsistencia = totalAsistencia > 0 ? Math.round((estadisticas.asistencia.asistida / totalAsistencia) * 100) : 0;
   
@@ -127,8 +121,7 @@ export default function DashboardStats() {
   const totalOrigen = estadisticas.origen.WEB + estadisticas.origen.IVR;
   const webPct = totalOrigen > 0 ? Math.round((estadisticas.origen.WEB / totalOrigen) * 100) : 0;
   const fonoPct = totalOrigen > 0 ? Math.round((estadisticas.origen.IVR / totalOrigen) * 100) : 0;
-
-  // Ordenar especialidades de mayor a menor demanda
+  
   const especialidadesOrdenadas = Object.entries(estadisticas.especialidades)
     .sort(([, a], [, b]) => b - a);
 

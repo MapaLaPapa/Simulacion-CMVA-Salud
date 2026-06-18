@@ -22,8 +22,7 @@ export default function CargaHoras() {
   const [loading, setLoading] = useState(false);
   const [profesionales, setProfesionales] = useState<Profesional[]>([]);
   const [alerta, setAlerta] = useState<{ tipo: 'exito' | 'error', texto: string } | null>(null);
-
-  // --- ESTADO PARA GENERADOR POR RANGO ---
+  
   const [formRango, setFormRango] = useState({
     id_rol: '',
     fecha: '',
@@ -32,12 +31,10 @@ export default function CargaHoras() {
     intervalo: '20',
     box: 'BOX A-1'
   });
-
-  // --- ESTADO PARA CARGA CSV ---
+  
   const [csvData, setCsvData] = useState<any[]>([]);
 
   useEffect(() => {
-    // Cargar lista de profesionales para el select
     fetch(`/api/admin/profesionales`)
       .then(res => res.json())
       .then(data => setProfesionales(data));
@@ -47,8 +44,7 @@ export default function CargaHoras() {
     setAlerta({ tipo, texto });
     setTimeout(() => setAlerta(null), 5000);
   };
-
-  // --- LÓGICA: GENERADOR POR RANGO ---
+  
   const generarBloquesManual = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,8 +66,7 @@ export default function CargaHoras() {
       setLoading(false);
     }
   };
-
-  // --- LÓGICA: CARGA CSV ---
+  
   const handleFileUpload = (e: any) => {
     const file = e.target.files[0];
     Papa.parse(file, {

@@ -9,12 +9,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configuramos la conexión hacia el Ollama físico desde dentro de Docker
+
 const OLLAMA_URL = process.env.OLLAMA_URL;
 
 const openai = new OpenAI({
   baseURL: OLLAMA_URL,
-  apiKey: 'ollama' // El SDK exige un string aquí, pero Ollama no valida contraseñas locales
+  apiKey: 'ollama' 
 });
 
 app.post('/api/chat', async (req, res) => {
@@ -22,7 +22,7 @@ app.post('/api/chat', async (req, res) => {
     const { message } = req.body;
 
     const completion = await openai.chat.completions.create({
-      model: 'llama3', // Aquí pones el modelo que hayas descargado (ej. llama3, phi3, mistral)
+      model: 'llama3',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message }

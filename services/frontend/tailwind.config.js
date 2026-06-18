@@ -57,11 +57,9 @@ export default {
         'surface-variant': '#d3e4fe'
       },
       fontFamily: {
-        // Configuramos Public Sans como la fuente predeterminada
         sans: ['"Public Sans"', 'sans-serif'],
       },
       fontSize: {
-        // Tipografía exacta de la especificación
         'headline-lg': ['40px', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '700' }],
         'headline-md': ['28px', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
         'headline-sm': ['20px', { lineHeight: '1.4', fontWeight: '600' }],
@@ -71,7 +69,6 @@ export default {
         'label-sm': ['12px', { lineHeight: '1.2', fontWeight: '600' }],
       },
       borderRadius: {
-        // Redondeo de bordes (Shapes)
         'sm': '0.25rem',
         DEFAULT: '0.5rem',
         'md': '0.75rem',
@@ -80,7 +77,6 @@ export default {
         'full': '9999px'
       },
       spacing: {
-        // Espaciados personalizados (Layout & Spacing)
         'base': '8px',
         'xs': '4px',
         'sm': '12px',

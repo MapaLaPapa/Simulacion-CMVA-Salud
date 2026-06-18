@@ -4,9 +4,8 @@ import { Menu, X, Hospital, ArrowRight } from "lucide-react"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const location = useLocation() // Lee la URL actual
-
-  // Función mágica para evaluar si el botón coincide con la URL
+  const location = useLocation()
+  
   const isActive = (path: string) => {
     if (path.includes('#')) {
       return location.pathname + location.hash === path;

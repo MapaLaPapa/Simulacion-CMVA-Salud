@@ -91,11 +91,9 @@ export function BookingForm() {
     }, []);
 
     const handleRutChange = (value: string) => {
-        // Elimina todo lo que NO sea número o letra 'K'/'k'. 
-        // Si el usuario escribe puntos o guiones, la función los borra al instante.
+        
         const limpio = value.replace(/[^0-9kK]/gi, '').toUpperCase();
         
-        // Evitamos que escriban RUTs infinitamente largos
         if (limpio.length > 9) return;
 
         setRut(limpio);
@@ -108,8 +106,7 @@ export function BookingForm() {
         
         const cuerpo = rutLimpio.slice(0, -1);
         const dv = rutLimpio.slice(-1);
-        
-        // Expresión regular que agrega un punto cada 3 números
+
         return cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv;
     };
     
@@ -367,9 +364,7 @@ export function BookingForm() {
             <input
                     id="rut"
                     type="text"
-                    // 1. Aquí mostramos la versión maquillada (ej: 20.950.588-6)
                     value={formatearRutVisual(rut)}
-                    // 2. Al escribir, enviamos el valor al manejador (que lo limpiará a 209505886)
                     onChange={(e) => {
                         handleRutChange(e.target.value);
                         setEsNuevo(false);
@@ -484,7 +479,6 @@ export function BookingForm() {
                             value={datos.paciente?.sexo_registral || ''}
                             onChange={(e) => setDatos({ ...datos, paciente: { ...datos.paciente!, sexo_registral: e.target.value } })}
                             className="w-full px-4 py-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-secondary/50 focus:border-secondary bg-white"
-                            // ¡Ojo! Le borramos el 'required' de aquí
                         >
                             <option value="">Seleccione...</option>
                             <option value="Femenino">Femenino</option>
@@ -576,13 +570,13 @@ export function BookingForm() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {especialidadesDB.map((esp) => {
                     const Icono = iconos[esp.icono] || Stethoscope;
-                    const estaDisponible = esp.medicos_activos > 0; // Evaluamos si hay médicos
+                    const estaDisponible = esp.medicos_activos > 0; 
 
                     return (
                         <button 
                         key={esp.id} 
                         onClick={() => seleccionarEspecialidad(esp.id)} 
-                        disabled={!estaDisponible} // Bloqueamos el clic si es false
+                        disabled={!estaDisponible} 
                         className={`p-6 border rounded-xl text-left transition-all ${
                             estaDisponible 
                             ? 'bg-surface-container-lowest border-outline-variant/30 hover:border-secondary hover:shadow-sm' 
@@ -694,7 +688,6 @@ export function BookingForm() {
                     
                     {/* 1. Dibujamos los espacios vacíos antes del día 1 */}
                     {Array.from({ 
-                    // Calculamos qué día de la semana cae el día 1 (0=Dom, 1=Lun...). Ajustamos para que Lunes sea 0.
                     length: (new Date(mesActual.getFullYear(), mesActual.getMonth(), 1).getDay() + 6) % 7 
                     }).map((_, i) => (
                     <div key={`empty-${i}`} className="p-2" /> 
@@ -702,19 +695,15 @@ export function BookingForm() {
 
                     {/* 2. Dibujamos los días reales del mes */}
                     {Array.from({ 
-                    // Calculamos cuántos días tiene este mes exacto
                     length: new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0).getDate() 
                     }).map((_, index) => {
                     
                     const numeroDia = index + 1;
-                    // Creamos la fecha real para este día
                     const fechaDelBoton = new Date(mesActual.getFullYear(), mesActual.getMonth(), numeroDia);
-                    // Formato YYYY-MM-DD para comparar con tu base de datos
                     const fechaStr = format(fechaDelBoton, 'yyyy-MM-dd'); 
                     
                     const tieneDisponibilidad = fechasDisponibles.has(fechaStr);
                     
-                    // Comparamos si la fecha es anterior a HOY (ignorando la hora)
                     const hoy = new Date();
                     hoy.setHours(0, 0, 0, 0);
                     const esPasado = fechaDelBoton < hoy;

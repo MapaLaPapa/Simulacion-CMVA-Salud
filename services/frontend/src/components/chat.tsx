@@ -15,8 +15,7 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
     const [userInput, setUserInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [open, setOpen] = useState(!widget);
-    
-    // Estado real para almacenar el flujo de la conversación
+     
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 'init',
@@ -28,16 +27,14 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
-
-    // Auto-ajuste de la altura del textarea
+    
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         }
     }, [userInput]);
-
-    // Auto-scroll al final del chat cuando llega un mensaje nuevo o está escribiendo
+    
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isTyping]);
@@ -48,7 +45,6 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
 
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
-        // 1. Añadir el mensaje del usuario al chat inmediatamente
         const userMessage: Message = {
             id: `user-${Date.now()}`,
             sender: 'user',
@@ -61,7 +57,6 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
         setIsTyping(true);
 
         try {
-            // 2. Petición real a tu microservicio Dockerizado (corriendo en el puerto 5001 de tu máquina)
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -75,8 +70,7 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
             }
 
             const data = await response.json();
-
-            // 3. Añadir la respuesta real de la IA local
+            
             const botMessage: Message = {
                 id: `bot-${Date.now()}`,
                 sender: 'bot',
@@ -89,7 +83,6 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
         } catch (error) {
             console.error('Error al conectar con la IA:', error);
             
-            // Mensaje de error visual para el usuario si se cae la red o el contenedor
             const errorMessage: Message = {
                 id: `err-${Date.now()}`,
                 sender: 'bot',
@@ -101,8 +94,7 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
             setIsTyping(false);
         }
     };
-
-    // Permite enviar presionando Enter sin Shift
+    
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -111,8 +103,7 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
     };
 
     const handleToggle = () => setOpen((v) => !v);
-
-    // --- RENDERIZADO MODO WIDGET (Burbuja flotante) ---
+    
     if (widget) {
       return (
         <div className="fixed bottom-6 right-6 z-50">
@@ -195,8 +186,7 @@ const Chat: React.FC<ChatProps> = ({ widget = false }) => {
         </div>
       );
     }
-
-    // --- RENDERIZADO MODO PANTALLA COMPLETA ---
+    
     return (
         <div className="font-body-md text-on-surface bg-background flex flex-col min-h-screen">
             {/* TopAppBar */}

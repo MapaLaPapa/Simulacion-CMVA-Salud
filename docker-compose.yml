@@ -56,7 +56,7 @@ services:
     ports:
       - "0.0.0.0:5060:5060/udp"
       - "0.0.0.0:5060:5060/tcp"
-      - "0.0.0.0:10000-10099:10000-10099/udp" # 💡 Obliga a mapear en IPv4
+      - "0.0.0.0:10000-10099:10000-10099/udp"
     networks:
       - rayen_private_net
       - rayen_public_net 
@@ -65,17 +65,17 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: rayen_cadvisor
     privileged: true
-    pid: host                           # 💡 LA LLAVE MAESTRA: Otorga visión total de la RAM y Procesos
+    pid: host                          
     restart: unless-stopped
     command:
       - '-docker_only=true'
-      - '-disable_metrics=disk,diskIO'  # Evita que se estrelle buscando discos virtuales
+      - '-disable_metrics=disk,diskIO' 
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:rw
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # El traductor de nombres (rayen_backend, etc.)
+      - /var/run/docker.sock:/var/run/docker.sock:ro 
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro

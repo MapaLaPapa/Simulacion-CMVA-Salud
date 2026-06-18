@@ -61,7 +61,6 @@ export default function DashboardAdmin() {
         
         const data = await res.json();
         
-        // Seteamos la agenda para la tabla
         setAgenda(data.agenda);
         
         
@@ -85,7 +84,6 @@ export default function DashboardAdmin() {
 
     const actualizarEstadoCita = async (idCita: number, nuevoEstado: string) => {
     try {
-        // Buscamos la cita en el estado actual para extraer su id_bloque
         const citaActual = agenda.find(item => item.id_cita === idCita);
         
         if (!citaActual || !citaActual.id_bloque) {
@@ -97,8 +95,8 @@ export default function DashboardAdmin() {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                estado_final: nuevoEstado,        // <-- Corregido
-                id_bloque: citaActual.id_bloque   // <-- Extraído del estado
+                estado_final: nuevoEstado,       
+                id_bloque: citaActual.id_bloque  
             })
         });
 
@@ -197,8 +195,8 @@ export default function DashboardAdmin() {
             to="/admin/dashboard" 
             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-label-md transition-all ${
               location.pathname === '/admin/dashboard' 
-                ? 'bg-secondary/20 text-on-primary-container font-bold' // ✨ ILUMINADO (Activo)
-                : 'text-on-primary-container/70 hover:bg-secondary/10 hover:text-on-primary-container' // 🌑 APAGADO (Inactivo)
+                ? 'bg-secondary/20 text-on-primary-container font-bold'
+                : 'text-on-primary-container/70 hover:bg-secondary/10 hover:text-on-primary-container'
             }`}
           >
             <LayoutList className="h-5 w-5" />
@@ -209,8 +207,8 @@ export default function DashboardAdmin() {
             to="/admin/stats" 
             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-label-md transition-all ${
               location.pathname === '/admin/stats' 
-                ? 'bg-secondary/20 text-on-primary-container font-bold' // ✨ ILUMINADO (Activo)
-                : 'text-on-primary-container/70 hover:bg-secondary/10 hover:text-on-primary-container' // 🌑 APAGADO (Inactivo)
+                ? 'bg-secondary/20 text-on-primary-container font-bold'
+                : 'text-on-primary-container/70 hover:bg-secondary/10 hover:text-on-primary-container'
             }`}
           >
             <BarChart className="h-5 w-5" />

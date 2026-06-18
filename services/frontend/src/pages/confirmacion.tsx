@@ -1,23 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '../components/header';
-import { Footer } from '../components/footer'; // Asumiendo que tienes un Footer
+import { Footer } from '../components/footer';
 
 
 const ConfirmacionPage = () => {
     const { idCita } = useParams();
-
-    // Estados de la interfaz
+    
     const [cita, setCita] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [mensajeExito, setMensajeExito] = useState(null);
-
-    // 1. Buscar los datos unificados de la cita al cargar
+    
     useEffect(() => {
         const fetchCita = async () => {
             try {
-                // Llamamos a tu Orquestador (server.js) que hace de proxy hacia Rayen
                 const response = await fetch(`/api/citas/${idCita}`);
                 
                 if (!response.ok) {
@@ -28,7 +25,7 @@ const ConfirmacionPage = () => {
                 }
                 
                 const data = await response.json();
-                setCita(data); // data ahora tiene el formato unificado (nombre_legal, especialidad_nombre, etc.)
+                setCita(data);
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -38,13 +35,11 @@ const ConfirmacionPage = () => {
 
         fetchCita();
     }, [idCita]);
-
-    // 2. Función para confirmar o anular
+    
     const manejarRespuesta = async (nuevoEstado) => {
         setLoading(true);
-        setError(null); // Limpiamos errores previos
+        setError(null);
         try {
-            // PUT directo al Orquestador
             const response = await fetch(`/api/admin/citas/${idCita}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -67,8 +62,7 @@ const ConfirmacionPage = () => {
             setLoading(false);
         }
     };
-
-    // --- Sub-componente para formatear fecha/hora ---
+    
     const FormatoFechaHora = ({ fechaIso }) => {
         const fechaObj = new Date(fechaIso);
         const fechaLimpia = fechaObj.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -80,10 +74,7 @@ const ConfirmacionPage = () => {
             </div>
         );
     };
-
-    // ==========================================
-    // RENDERIZADO PRINCIPAL (Estructura Base)
-    // ==========================================
+    
     return (
         <div className="min-h-screen flex flex-col bg-background font-sans">
             <Header />

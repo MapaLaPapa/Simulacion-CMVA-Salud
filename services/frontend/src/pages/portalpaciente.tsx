@@ -8,7 +8,6 @@ import {
   XCircle, Loader2, Stethoscope, Edit2, Save, X, Mail, KeyRound, ArrowLeft
 } from 'lucide-react'
 
-// Interfaces 
 interface CitaPaciente {
   id_cita: number;
   fecha_hora_inicio: string;
@@ -39,26 +38,21 @@ const estadoConfig: Record<string, any> = {
 
 
 export default function MisCitasPage() {
-  // Estados de flujo (1: Pedir RUT, 2: Pedir Código, 3: Dashboard)
   const [paso, setPaso] = useState<1 | 2 | 3>(1);
   
-  // Estados de validación
   const [rut, setRut] = useState('');
   const [codigo, setCodigo] = useState('');
   const [correoOculto, setCorreoOculto] = useState('');
   const [errorGlobal, setErrorGlobal] = useState('');
   const [cargando, setCargando] = useState(false);
   
-  // Estado de datos
   const [paciente, setPaciente] = useState<DatosPaciente | null>(null);
-
-  // Estados edición
+  
   const [editando, setEditando] = useState(false);
   const [formData, setFormData] = useState({ telefono: '', email: '' });
   const [guardando, setGuardando] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
-
-  // Utilidades
+  
   const formatearRut = (rut: string) => {
     const actual = rut.replace(/^0+/, "");
     if (actual != '' && actual.length > 1) {
@@ -81,8 +75,7 @@ export default function MisCitasPage() {
 
   const formatearFecha = (isoString: string) => new Date(isoString).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
   const formatearHora = (isoString: string) => new Date(isoString).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-
-  // PASO 1: Solicitar envío de código
+  
   const solicitarCodigo = async () => {
     if (rut.length < 8) {
       setErrorGlobal('El RUT ingresado no es válido');
@@ -93,7 +86,6 @@ export default function MisCitasPage() {
     setErrorGlobal('');
     
     try {
-      // POST al backend para generar y enviar el código
       const res = await fetch(`/api/pacientes/solicitar-codigo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,7 +98,6 @@ export default function MisCitasPage() {
         throw new Error(data.error || 'Error al conectar con el servidor');
       }
       
-      // Si todo sale bien, avanzamos al paso 2 y mostramos el correo oculto
       setCorreoOculto(data.correoOculto);
       setPaso(2);
       
@@ -116,8 +107,7 @@ export default function MisCitasPage() {
       setCargando(false);
     }
   }
-
-  // PASO 2: Verificar el código ingresado
+  
   const verificarCodigo = async () => {
     if (codigo.length !== 6) {
       setErrorGlobal('El código debe tener 6 dígitos');
@@ -139,11 +129,10 @@ export default function MisCitasPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Código incorrecto o expirado');
       }
-
-      // Si el código es correcto, el backend nos devuelve el perfil completo
+      
       setPaciente(data);
       setFormData({ telefono: data.telefono, email: data.email });
-      setPaso(3); // ¡Bienvenido al Dashboard!
+      setPaso(3);
 
     } catch (err: any) {
       setErrorGlobal(err.message);
@@ -151,16 +140,14 @@ export default function MisCitasPage() {
       setCargando(false);
     }
   }
-
-  // PASO 3: Guardar nuevos datos de contacto
+  
   const guardarDatosContacto = async () => {
     setGuardando(true);
     setMensajeExito('');
     setErrorGlobal('');
 
     try {
-      // Nota: Idealmente el backend debería pedir un token de sesión aquí también, 
-      // pero para simplificar usaremos el RUT y el mismo código validado antes
+      
       const res = await fetch(`/api/pacientes/${rut}/contacto`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -210,10 +197,8 @@ export default function MisCitasPage() {
                 <label className="block text-label-md text-on-surface mb-2">RUT del Paciente</label>
                 <input
                   type="text"
-                  // 1. AQUÍ llamas a formatearRut (solo para la vista)
                   value={formatearRut(rut)} 
                   
-                  // 2. AQUÍ llamas al limpiador
                   onChange={(e) => handleRutChange(e.target.value)} 
                   
                   placeholder="12.345.678-9"

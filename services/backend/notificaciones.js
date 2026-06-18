@@ -5,9 +5,7 @@ require('dotenv').config();
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
-// ==========================================
-// FUNCIONES AUXILIARES DE BASE DE DATOS
-// ==========================================
+
 const checkHistorial = async (id_cita, canal, db_pacientes) => {
     const [rows] = await db_pacientes.query(
         'SELECT id_notificacion FROM Historial_Notificaciones WHERE id_cita = ? AND canal = ?', 
@@ -23,9 +21,7 @@ const guardarHistorial = async (id_cita, canal, estado, id_mensaje, error_detall
     `, [id_cita, canal, estado, id_mensaje || null, error_detalles || null]);
 };
 
-// ==========================================
-// 1. FUNCIÓN PARA SMS
-// ==========================================
+
 const enviarSms = async (cita, db_pacientes) => {
     try {
         const yaEnviado = await checkHistorial(cita.id_cita, 'SMS', db_pacientes);
@@ -52,9 +48,7 @@ const enviarSms = async (cita, db_pacientes) => {
     }
 };
 
-// ==========================================
-// 2. FUNCIÓN PARA WHATSAPP
-// ==========================================
+
 const enviarWsp = async (cita, db_pacientes) => {
     try {
         const yaEnviado = await checkHistorial(cita.id_cita, 'WSP', db_pacientes);
@@ -80,9 +74,6 @@ const enviarWsp = async (cita, db_pacientes) => {
     }
 };
 
-// ==========================================
-// 3. NODEMAILER (CORREO)
-// ==========================================
 const enviarCorreo = async (cita, db_pacientes) => {
     if (!cita.email) return; 
 
@@ -139,12 +130,8 @@ const enviarCorreo = async (cita, db_pacientes) => {
     }
 };
 
-// ==========================================
-// ORQUESTADOR PRINCIPAL
-// ==========================================
 const enviarNotificaciones = async (db_profesionales, db_pacientes) => {
     try {
-        // 1. Buscamos en db_profesionales los bloques a 48 horas directamente con SQL
         const [bloques] = await db_profesionales.query(`
             SELECT id_bloque, fecha_hora_inicio 
             FROM Agenda_Bloques 
@@ -154,16 +141,14 @@ const enviarNotificaciones = async (db_profesionales, db_pacientes) => {
 
         if (bloques.length === 0) return;
         const idsBloques = bloques.map(b => b.id_bloque);
-
-        // 2. Buscamos a los pacientes en db_pacientes
+        
         const [citas] = await db_pacientes.query(`
             SELECT c.id_cita, c.id_bloque_externo, p.nombre_legal, p.telefono, p.email
             FROM Citas_Agendadas c
             JOIN Pacientes p ON c.rut_paciente = p.rut
             WHERE c.id_bloque_externo IN (?)
         `, [idsBloques]);
-
-        // 3. Unimos los datos
+        
         const notificaciones = citas.map(cita => {
             const bloque = bloques.find(b => b.id_bloque === cita.id_bloque_externo);
             return {
@@ -176,8 +161,7 @@ const enviarNotificaciones = async (db_profesionales, db_pacientes) => {
         });
 
         if (notificaciones.length === 0) return;
-
-        // 4. Procesamos los envíos pasándole la conexión a la base de datos a cada función
+        
         for (const cita of notificaciones) {
             await enviarSms(cita, db_pacientes);
             await enviarWsp(cita, db_pacientes);
